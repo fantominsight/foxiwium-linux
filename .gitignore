@@ -1,5 +1,10 @@
 # Build artifacts
 build/
+rootfs/
 
-# Editor
+# Legacy hobby kernel (user maintains it separately)
+legacy-kernel/
+
+# Editors
 *.swp
+*.tmp

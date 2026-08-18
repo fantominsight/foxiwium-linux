@@ -1,0 +1,19 @@
+#!/bin/sh
+# Foxiwium Linux — put an "Install Foxiwium" launcher on the live desktop.
+
+DESKTOP=$(xdg-user-dir DESKTOP 2>/dev/null || echo "$HOME/Desktop")
+mkdir -p "$DESKTOP"
+
+cp /usr/share/applications/foxiwium-installer.desktop "$DESKTOP/"
+chmod +x "$DESKTOP/foxiwium-installer.desktop"
+
+# Mark as trusted so Plasma/KDE and Xfce will execute it without a prompt.
+if command -v gio >/dev/null 2>&1; then
+    gio set --type=string "$DESKTOP/foxiwium-installer.desktop" \
+        metadata::trusted true 2>/dev/null || true
+fi
+if command -v kio >/dev/null 2>&1; then
+    :
+fi
+
+exit 0

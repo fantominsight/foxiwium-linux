@@ -1,0 +1,8 @@
+PRETTY_NAME="Foxiwium Linux 1.0 (Fenrir)"
+NAME="Foxiwium Linux"
+ID=foxiwium
+ID_LIKE=debian
+VERSION="1.0 (Fenrir)"
+VERSION_ID="1.0"
+VERSION_CODENAME=fox
+ANSI_COLOR="1;33"

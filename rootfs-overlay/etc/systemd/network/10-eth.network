@@ -1,0 +1,7 @@
+# Foxiwium — DHCP on any wired NIC (QEMU user networking, physical ethernet, ...)
+[Match]
+Name=e*
+
+[Network]
+DHCP=ipv4
+LinkLocalAddressing=ipv6

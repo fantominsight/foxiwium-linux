@@ -1,0 +1,6 @@
+---
+type:       "job"
+name:       "foxiwium-finalize"
+interface:  "process"
+command:    "/usr/share/calamares/helpers/calamares-foxiwium-finalize"
+timeout:    600

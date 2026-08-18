@@ -1,169 +1,60 @@
-# Foxiwium OS
+# Foxiwium Linux
 
-![Banner](banner.jpg)
+**Настоящий Linux**: Debian-based live-ISO с **KDE Plasma на X11** и
+**графическим установщиком Calamares**. Собирается через `debootstrap`,
+`initramfs-tools` + `live-boot` и `grub-mkrescue` (GRUB BIOS+UEFI).
 
-**Hobby-операционная система с нуля для x86_64**  
-Собственное ядро, графический рабочий стол, сетевой стек и приложения — без Linux и без libc.
-
-> Совместный проект **Fantominsight** и **Oxiwis**.  
-> Цель — понятная система для новичков и при этом интересная площадка для экспериментов с OS-dev.
-
----
-
-## Скриншоты
-
-| Desktop / Wallpaper | Browser | Terminal |
-|:---:|:---:|:---:|
-| ![Wallpaper](wallpaper.png) | ![Browser](browser.png) | ![Terminal](terminal.png) |
-
-| Text Editor | File Manager | Boot |
-|:---:|:---:|:---:|
-| ![Editor](text_editor.png) | ![Files](file_manager.png) | ![Boot](boot.jpg) |
-
----
-
-## Возможности
-
-### Ядро
-- x86_64 long mode, Multiboot2 + GRUB
-- GDT / IDT / PIC / PIT, page fault handling
-- Physical & virtual memory manager (PMM / VMM)
-- Kernel heap
-- Процессы + syscalls (SYSCALL/SYSRET)
-- VFS + initramfs (cpio)
-- ELF-loader (пользовательские процессы)
-
-### Графика и GUI
-- Framebuffer (Multiboot2), double-buffering
-- Тема **Liquid Glass** / KDE Breeze Dark
-- Окна: перетаскивание, ресайз, snap к краям экрана
-- Нижняя панель, лаунчер приложений, контекстное меню, меню питания
-- Встроенные шрифты и обои
-
-### Приложения
-| Приложение | Описание |
-|---|---|
-| **Files** | Файловый менеджер на VFS (навигация, sidebar) |
-| **Terminal** | Оболочка с реальными командами (`ping`, `curl`, `wget` и др.) |
-| **Browser** | HTTP-браузер, поиск через Bing RSS |
-| **Calculator** | Калькулятор |
-| **Text Editor** | Простой текстовый редактор |
-| **Settings** | Настройки |
-| **System Monitor** | Информация о системе, память, uptime |
-| **About** | О системе |
-
-### Сеть
-- Драйвер **RTL8139** (PCI)
-- ARP, IPv4, ICMP (ping), UDP, DNS, TCP
-- HTTP/1.1 (синхронный и асинхронный)
-- В QEMU работает через user-mode networking (`-nic user,model=rtl8139`)
-
-> **Пока нет TLS/HTTPS** — большинство современных сайтов недоступны.  
-> Подробности и планы — в [ROADMAP.md](ROADMAP.md).
-
----
-
-## Сборка и запуск
-
-### Требования
-- `nasm`, `g++` / `gcc` (или кросс-компилятор `x86_64-elf-`)
-- `grub-mkrescue` (для ISO)
-- `qemu-system-x86_64`
-- `cpio`, `xxd`
-
-### Сборка
+## Быстрый старт
 
 ```bash
-make          # ядро + shell + initramfs + ISO → build/foxiwium.iso
-# или по шагам:
-make kernel
-make iso
+make iso-in-docker       # собрать build/foxiwium.iso (ВСЁ в Docker)
+make run                 # запустить live в QEMU (окно)
+make run-nographic       # запустить в QEMU (serial console)
+make deepclean           # удалить build/ и rootfs/
 ```
 
-### Запуск в QEMU
+**ПРЕДУПРЕЖДЕНИЕ**: скрипты сборки НИКОГДА не запускать на хосте — они
+bind-mount'ят /dev,/sys,/proc внутрь `rootfs/`, и `rm -rf` может стереть
+host `/dev` (уже случалось). Сборка — только в Docker: `make iso-in-docker`
+(контейнер настраивается сам через `make docker-builder`).
 
-```bash
-make run
-# или вручную:
-qemu-system-x86_64 -cdrom build/foxiwium.iso -m 512M \
-  -display sdl -accel kvm -nic user,model=rtl8139
-```
+## Графика
 
-Без KVM (для отладки таймингов):
+- **KDE Plasma 6 на X11** (Xorg), дисплейный менеджер **SDDM** (autologin в
+  live-сессии). Wayland отключён намеренно.
+- NVIDIA GeForce GT 210 (и аналоги) работает через открытый драйвер
+  **nouveau** (конфиг: `rootfs-overlay/etc/X11/xorg.conf.d/20-foxiwium-video.conf`).
+  Проприетарный nvidia-legacy драйвер для GT 210 EOL и в Debian отсутствует.
 
-```bash
-qemu-system-x86_64 -cdrom build/foxiwium.iso -m 512M \
-  -accel tcg,thread=single -nic user,model=rtl8139
-```
+## Установка на компьютер / в VM
 
-Серийный вывод / debugcon:
+- В меню GRUB выбрать **"Foxiwium Linux — install to hard disk"** (или после
+  загрузки live кликнуть иконку **"Install Foxiwium Linux"** на рабочем столе).
+- Откроется графический мастер **Calamares**: язык → раскладка → разметка
+  диска (erase / manual) → пользователь и пароль root → установка → GRUB
+  (BIOS и UEFI) → перезагрузка.
 
-```bash
-qemu-system-x86_64 -cdrom build/foxiwium.iso -m 512M \
-  -debugcon file:/tmp/fox_dbg.log -nic user,model=rtl8139
-tr -d '\0' < /tmp/fox_dbg.log
-```
+## Как это устроено
 
-### Другие цели Makefile
+- `scripts/build-rootfs.sh` — debootstrap (trixie) в `rootfs/`, установка
+  пакетов (Plasma, SDDM, Xorg, nouveau, Calamares), initramfs с live-boot.
+- `rootfs-overlay/` — конфиги и брендинг гостя: sources.list, networkd,
+  sshd, console, os-release, motd, fox-help, SDDM/X11, установщик
+  (`etc/calamares/`), иконка установщика, polkit-правило.
+- `scripts/create-iso.sh` — squashfs корневой ФС + GRUB ISO (`/live/vmlinuz`,
+  `/live/initrd.img`, `/live/filesystem.squashfs`, загрузка с `boot=live`).
+- `grub/grub.cfg` — меню (live, install, serial, verbose).
+- `build-env/` — Docker-контейнер сборки + `run-in-container.sh`.
 
-| Цель | Описание |
-|------|----------|
-| `make kernel` | Только ядро (`build/foxiwium.bin`) |
-| `make iso` | Загрузочный ISO |
-| `make disk` | Сырой образ диска |
-| `make run` | Запуск ISO в QEMU |
-| `make run-nographic` | Без графики, serial stdio |
-| `make debug` | QEMU + GDB |
-| `make clean` | Очистка `build/` |
+## Требования (хост)
 
----
+Docker (для сборки), `qemu-system-x86_64` (для запуска). Сеть нужна для
+debootstrap/apt внутри контейнера.
 
-## Структура репозитория
+## Переменные окружения
 
-```
-.
-├── kernel/
-│   ├── main.cpp              # Точка входа, рабочий стол, панель, главный цикл
-│   ├── apps/                 # Приложения (browser, calculator, editor, …)
-│   ├── arch/                 # GDT, CPU
-│   ├── boot/                 # boot.asm
-│   ├── crypto/               # AES, SHA-256, RSA, ECC, X.509 (заготовка под TLS)
-│   ├── drivers/              # RTL8139, net stack, PS/2, PIT, PIC, …
-│   ├── fs/                   # VFS, initramfs, ELF loader
-│   ├── graphics/             # Framebuffer, font, wallpaper, boot splash
-│   ├── gui/                  # Оконная система
-│   ├── mm/                   # PMM, VMM, heap
-│   ├── proc/                 # Процессы, context switch
-│   ├── syscall/              # Syscall entry + handlers
-│   └── userspace/            # Встроенный shell-бинарь
-├── grub/                     # Конфиги GRUB (BIOS / UEFI)
-├── initramfs/                # Минимальный init
-├── scripts/                  # build-initramfs, create-iso, create-disk
-├── Makefile
-├── ROADMAP.md                # Состояние проекта и планы
-└── LICENSE                   # GNU GPLv3
-```
-
----
-
-## Дорожная карта
-
-Актуальный статус, известные баги, план по TLS и USB/XHCI/Wi‑Fi — в **[ROADMAP.md](ROADMAP.md)**.
-
-Кратко приоритеты:
-
-1. Интернет (редиректы → TLS/HTTPS)
-2. Работа с файлами (VFS)
-3. Терминал
-4. Настройки, TTY, экраны паники, мультимедиа
-
----
-
-## Лицензия
-
-[GNU General Public License v3.0](LICENSE)
-
----
-
-**Foxiwium OS** — hobby OS built from scratch.  
-Сделано с любовью к низкоуровневому коду.
+- `FORCE=1` — пересобрать rootfs заново.
+- `SUITE=bookworm` — другой suite Debian.
+- `MIRROR=...` — другой зеркальный сервер.
+- `ROOT_PASSWORD=...` — пароли `root`/`fox`.
+- `SQUASHFS_COMP=xz` — другой алгоритм сжатия squashfs.

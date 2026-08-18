@@ -1,0 +1,25 @@
+#!/bin/sh
+# Foxiwium Linux — wrapper to run the Calamares installer from the live
+# session. Based on calamares-install-debian (calamares-settings-debian).
+
+# Stale fstab left behind by the live build messes with partitioning
+# (the calamares fstab module regenerates it from the target partitions).
+sudo mv /etc/fstab /etc/fstab.orig.calamares 2>/dev/null || true
+
+# Let Calamares scale its window for hi-dpi displays.
+export QT_AUTO_SCREEN_SCALE_FACTOR=1
+
+# Access control to run calamares as root for X11.
+xhost +si:localuser:root 2>/dev/null || true
+# Run the installer as root. sudo is used (not pkexec): pkexec proved flaky
+# here (hangs even when the polkit rule authorizes it), while the live user
+# has passwordless sudo (rootfs-overlay/etc/sudoers.d/foxiwium). sudo keeps
+# DISPLAY/XAUTHORITY from the session, so calamares reaches the X server.
+sudo -E /usr/bin/calamares
+RC=$?
+xhost -si:localuser:root 2>/dev/null || true
+
+# Restore the live fstab.
+sudo mv /etc/fstab.orig.calamares /etc/fstab 2>/dev/null || true
+
+exit $RC

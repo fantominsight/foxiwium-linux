@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Foxiwium Installer Autostart
+Comment=Adds the installer icon and launches the installer on demand
+Exec=/usr/bin/foxiwium-autostart
+StartupNotify=false
+NoDisplay=true
+
+X-GNOME-Autostart-Phase=Initialization
+X-KDE-autostart-phase=1

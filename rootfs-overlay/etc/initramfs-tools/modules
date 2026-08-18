@@ -1,0 +1,4 @@
+# Kernel modules required to mount the live medium (boot=live)
+squashfs
+iso9660
+loop

@@ -1,0 +1,5 @@
+# Foxiwium Linux live system — let the live user (fox) run sudo without a
+# password so the Calamares installer wrapper can prepare the live
+# environment. Removed from installed systems by the foxiwium-finalize
+# calamares module.
+fox ALL=(ALL:ALL) NOPASSWD: ALL

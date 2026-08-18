@@ -1,0 +1,7 @@
+# Foxiwium: plain APT output.
+# apt's "fancy progress" uses Unicode box-drawing characters and ANSI colour
+# codes that render as mojibake on many consoles/terminals. Turn them off so
+# apt stays readable everywhere (UTF-8 messages are fine; it's the graphics
+# characters that broke).
+Dpkg::Progress-Fancy "false";
+APT::Color "false";

@@ -1,0 +1,15 @@
+#!/bin/sh
+# Foxiwium Linux — session autostart:
+#   1. always put the installer icon on the desktop;
+#   2. if booted with the "foxiwium-install" kernel parameter, launch the
+#      installer automatically once the desktop is up.
+
+add-foxiwium-desktop-icon 2>/dev/null || true
+
+if grep -q foxiwium-install /proc/cmdline 2>/dev/null; then
+    # Give the desktop a moment to fully start (system tray, etc.).
+    sleep 5
+    setsid calamares-install-foxiwium >/dev/null 2>&1 &
+fi
+
+exit 0

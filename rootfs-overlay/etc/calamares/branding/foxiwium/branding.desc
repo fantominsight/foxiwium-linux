@@ -1,0 +1,39 @@
+---
+componentName:   foxiwium
+welcomeStyleCalamares: true
+welcomeExpandingLogo: true
+windowExpanding: normal
+windowSize: 800px,580px
+windowPlacement: center
+
+strings:
+    productName:         Foxiwium Linux
+    shortProductName:    Foxiwium
+    version:             1.0
+    shortVersion:        1.0
+    versionedName:       Foxiwium Linux 1.0 (Fenrir)
+    shortVersionedName:  Foxiwium 1.0
+    bootloaderEntryName: Foxiwium Linux
+    productUrl:          https://example.com
+    supportUrl:          https://example.com
+    knownIssuesUrl:      https://example.com
+    releaseNotesUrl:     https://example.com
+    donateUrl:           https://example.com
+
+sidebar: widget
+navigation: widget
+
+images:
+    productLogo:         "logo.png"
+    productIcon:         "productIcon.png"
+    productWelcome:      "welcome.png"
+
+slideshow:               "show.qml"
+
+style:
+   SidebarBackground:    "#5a3d1c"
+   SidebarText:          "#FFFFFF"
+   SidebarTextCurrent:   "#f9e6c4"
+   SidebarBackgroundCurrent: "#7a5324"
+
+slideshowAPI: 2

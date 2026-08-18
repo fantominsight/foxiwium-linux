@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Install Foxiwium Linux
+Name[ru]=Установить Foxiwium Linux
+Comment=Install Foxiwium Linux on this computer
+Comment[ru]=Установить Foxiwium Linux на этот компьютер
+Exec=calamares-install-foxiwium
+Icon=system-installer
+Terminal=false
+Categories=System;

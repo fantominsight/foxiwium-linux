@@ -1,32 +1,64 @@
 # Foxiwium OS — дорожная карта и состояние проекта
 
+> **Примечание (2026-08):** проект переведён на настоящий Linux — Debian-based
+> live-дистрибутив Foxiwium Linux (сборка в `scripts/`, конфиги в
+> `rootfs-overlay/`, см. `README.md`). Этот файл ниже документирует **старое
+> самописное ядро**, которое перенесено в `legacy-kernel/`.
+
 Этот файл — единый источник правды между сессиями. Веди его при каждом крупном
 изменении. Файл на русском, т.к. проект ведётся на русском.
 
-**Пароль sudo** - breadyouroute4
+**Пароль sudo/root/fox** - breadyouroute4
+
+---
+
+## 0. Текущее состояние (2026-08-15)
+
+**Графический десктоп + установщик (сделано):**
+- KDE Plasma 6 на **X11** (Xorg), дисплейный менеджер **SDDM**. Wayland
+  отключён намеренно: целевая видеокарта NVIDIA GeForce GT 210 получает
+  ускорение только на X11 через открытый драйвер nouveau (проприетарный
+  nvidia-legacy для этой карты EOL и удалён из Debian).
+- **Графический установщик Calamares** (как в Manjaro/Kali): загрузка live →
+  пункт меню GRUB "install to hard disk" (или иконка на рабочем столе) →
+  мастер (язык, раскладка, разметка диска, пользователь, GRUB BIOS+UEFI).
+  Конфиг: `rootfs-overlay/etc/calamares/`, кастомные шаги —
+  `foxiwium-finalize` (чистит live-пользователя fox и autologin),
+  `foxiwium-bootloader-config` (os-prober).
+- Автозапуск установщика работает через **sudo** (а не pkexec): в live
+  pkexec виснет даже при разрешающем polkit-правиле, поэтому обёртка
+  `calamares-install-foxiwium` запускает calamares как `sudo -E /usr/bin/calamares`
+  (live-пользователь имеет passwordless sudo через
+  `rootfs-overlay/etc/sudoers.d/foxiwium`, который `foxiwium-finalize` удаляет
+  в установленной системе). Проверено: окно установщика открывается (1024x580),
+  все модули/брендинг загружаются.
+- Установщик работает на реальном ПК и в QEMU (BIOS и UEFI).
+
+**В процессе (2026-08-15):** полный сквозной install-тест в QEMU (мастер →
+разметка → unpackfs → GRUB) и загрузка установленного диска.
+
+**Сборка ВСЕГДА в Docker** (`build-env/`, `make iso-in-docker`). Причина —
+история из раздела 7: `rm -rf rootfs/` трижды стирал host `/dev` через
+bind-mount. См. `scripts/WARNING.md`.
 
 ---
 
 ## 1. Как собрать, запустить и отладить
 
 ```bash
-make kernel && make iso                      # сборка
-qemu-system-x86_64 -cdrom build/foxiwium.iso -m 512M \
-  -accel tcg,thread=single -display none \
-  -debugcon file:/tmp/fox_dbg.log -nic user,model=rtl8139
-tr -d '\0' < /tmp/fox_dbg.log | grep -E "..."   # чтение лога (debugcon отдаёт NUL)
+make iso-in-docker              # rootfs + ISO в Docker (рекомендуется)
+make run                        # live-загрузка в QEMU (окно)
+make run-install                # QEMU с установщиком (см. ниже)
 ```
 
-- QEMU 8.2.2 (Debian). `-accel tcg,thread=single` — без KVM (гостевой таймер не
-  мешает). `-debugcon file:...` = порт 0xE9.
-- Для XHCI/USB добавить: `-device qemu-xhci` (и `-device usb-net`,
-  `-device usb-kbd`, `-device usb-tablet` для теста перечисления).
-- Сборка: `-Werror -O2 -mno-sse -mno-sse2`, фриландинг, без исключений/RTTI.
-  **`-Werror`**: никаких неиспользуемых функций/переменных — иначе не соберётся.
-- Стиль кода: почти всё — `inline`-функции в заголовках, статические глобалы.
-- `dbg(...)`/`dbgc(c)` пишут в порт 0xE9 (debugcon). `dbgh(v, digits)` — hex.
-- Kernel identity-mapped (pmm возвращает физический==виртуальный адрес), куча на
-  `0xFFFF800040000000`. Для MMIO-устройств маппить через `vmm::map_page()`.
+- **Установка в QEMU:** `qemu-system-x86_64 -cdrom build/foxiwium.iso \
+  -m 2048M -cpu max -accel kvm -nic user -display sdl -hda test-disk.img`
+  (создай `qemu-img create -f raw test-disk.img 20G`), в меню GRUB выбрать
+  "install to hard disk" → дождаться автозапуска Calamares.
+- **Docker-контейнер:** `build-env/run-in-container.sh make iso`. Образ
+  собирается через `make docker-builder` (Debian trixie + debootstrap +
+  squashfs-tools + grub-mkrescue). Сеть `--network=host`, права `--privileged`
+  (нужны bind-mount'ы /proc,/sys,/dev внутри rootfs).
 
 ---
 
@@ -211,6 +243,34 @@ CAPR пишется `rx_ptr - 0x10`.
 
 ## 7. История сессий (коротко)
 
+- **2026-08-15 — установщик: pkexec → sudo.** В live-сессии pkexec
+  (Debian 12+: отдельный пакет) не срабатывал: висел при автозапуске и
+  возвращал "Not authorized" (RC=127) даже с разрешающим polkit-правилом
+  (`10-foxiwium.rules`), хотя `pkcheck` от root подтверждал авторизацию.
+  Обнаружены и исправлены три сопутствующие причины: (1) пакет `pkexec` не
+  был установлен; (2) overlay-файлы после `cp -a` сохраняли владельца uid 1000
+  хоста (в госте это пользователь `fox`) — добавлена нормализация владельцев
+  в STEP 5 `build-rootfs.sh` (root:root, `/etc/polkit-1/rules.d` —
+  root:polkitd 0750, gid резолвится из rootfs/etc/group); (3) у live-пользователя
+  не было passwordless sudo — добавлен `etc/sudoers.d/foxiwium` (NOPASSWD).
+  Итог: обёртка `calamares-install-foxiwium` запускает установщик через
+  `sudo -E /usr/bin/calamares` (sudo сохраняет DISPLAY/XAUTHORITY), polkit-правило
+  удалено, `pkexec` больше не ставится. Проверено в QEMU: окно установщика
+  открывается. Остался сквозной install-тест.
+
+- **2026-08-14 — найден и исправлен корень трёх сносов HOST `/dev`.**
+  Причина: `findmnt -R -n -o TARGET "$ROOTFS"` молча возвращает НИЧЕГО
+  (rc=1), если `$ROOTFS` — обычная директория, а не точка монтирования.
+  Защита «проверил, что в rootfs нет bind-mount'ов /dev,/sys,/proc» выглядела
+  рабочей, но была пустой → `rm -rf rootfs` спускался в bind-mount и стирал
+  host `/dev`. Исправлено во всех трёх местах (`scripts/build-rootfs.sh`,
+  `scripts/create-iso.sh`, `Makefile deepclean`): вместо `findmnt -R $ROOTFS`
+  теперь `findmnt -n -r -o TARGET | awk` по префиксу `$ROOTFS/`
+  (функция `mounts_under()`), плюс размонтирование deepest-first
+  (`length`-сортировка). Проверено тестами: mount под rootfs детектится,
+  отказ от `rm -rf` срабатывает, после unmount каталог удаляется безопасно.
+  Проект ISO собран и загружается в QEMU до login (systemd `running`,
+  live-overlay, DHCP 10.0.2.15, `curl example.com` отдаёт HTML).
 - Сессия ранних отладок RTL8139: RX-гонка QEMU slirp, ROK раньше DMA-записи.
   Копировался нулевой кадр, пока не добавили PIO-выходы в receive().
 - DNS-баги: (1) ID сравнения с уже инкрементированным `dns_id` → добавлен

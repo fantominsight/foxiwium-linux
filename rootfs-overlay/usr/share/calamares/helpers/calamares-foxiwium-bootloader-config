@@ -1,0 +1,22 @@
+#!/bin/bash
+# Foxiwium Linux — enable os-prober so the installed system can boot other
+# operating systems it finds (dual-boot). The grubcfg module that runs right
+# after this one regenerates the GRUB configuration.
+#
+# grub-pc / grub-efi binaries are already shipped in the live rootfs, so no
+# package installation is needed here.
+
+CHROOT=$(mount | grep proc | grep calamares | awk '{print $3}' | sed -e "s#/proc##g")
+
+if [ -z "$CHROOT" ] || [ ! -d "$CHROOT" ]; then
+    echo "foxiwium-bootloader-config: cannot find target chroot root" >&2
+    exit 1
+fi
+
+sed -i "s/^#GRUB_DISABLE_OS_PROBER=.*/GRUB_DISABLE_OS_PROBER=false/" \
+    "$CHROOT/etc/default/grub" 2>/dev/null || true
+if ! grep -q '^GRUB_DISABLE_OS_PROBER' "$CHROOT/etc/default/grub" 2>/dev/null; then
+    echo 'GRUB_DISABLE_OS_PROBER=false' >> "$CHROOT/etc/default/grub"
+fi
+
+exit 0

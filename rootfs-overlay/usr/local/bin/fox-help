@@ -1,0 +1,20 @@
+#!/bin/sh
+# Foxiwium Linux — quick help
+
+cat <<'EOF'
+
+ Foxiwium Linux — быстрая шпаргалка
+ ────────────────────────────────────────
+ Вход:        root  или  fox   (пароль: breadyouroute4)
+ Сеть:        ip a                       — адрес
+              ping 10.0.2.2              — шлюз QEMU (host)
+              ping example.com           — интернет
+ SSH:         ssh fox@10.0.2.15          — из гостевой сети
+ Инструменты: vim   htop   curl   wget   nano   less
+ Пакеты:      sudo apt update && sudo apt install <пакет>
+ Раскладка:   консоль — us/ru через Alt+Shift (setupcon)
+ Обновления:  sudo apt full-upgrade
+ Выход:       poweroff
+ ────────────────────────────────────────
+ Это live-система: изменения в памяти не сохраняются.
+EOF

@@ -1,0 +1,26 @@
+#!/bin/bash
+# Foxiwium Linux — early tweaks on the freshly unpacked target (runs right
+# after unpackfs, BEFORE the calamares users module so a user named "fox"
+# cannot collide with the live user):
+#   * remove the default live user 'fox' (the installer creates a real user);
+#   * remove the live-only SDDM autologin so the installed system asks to log in;
+#   * make sure the graphical boot target is the default.
+
+CHROOT=$(mount | grep proc | grep calamares | awk '{print $3}' | sed -e "s#/proc##g")
+
+if [ -z "$CHROOT" ] || [ ! -d "$CHROOT" ]; then
+    echo "foxiwium-finalize: cannot find target chroot root" >&2
+    exit 1
+fi
+
+chroot "$CHROOT" userdel -r fox 2>/dev/null || true
+
+chroot "$CHROOT" sed -i -e '/Autologin/d' /etc/sddm.conf.d/10-foxiwium.conf \
+    2>/dev/null || true
+
+# Strip the live-only passwordless sudo so installed systems never inherit it.
+chroot "$CHROOT" rm -f /etc/sudoers.d/foxiwium 2>/dev/null || true
+
+chroot "$CHROOT" systemctl set-default graphical.target 2>/dev/null || true
+
+exit 0
